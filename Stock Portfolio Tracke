@@ -1,0 +1,75 @@
+import yfinance as yf
+import pandas as pd
+import os
+
+# File to store portfolio data
+PORTFOLIO_FILE = "portfolio.csv"
+
+# Load portfolio if exists, else create new
+if os.path.exists(PORTFOLIO_FILE):
+    portfolio = pd.read_csv(PORTFOLIO_FILE)
+else:
+    portfolio = pd.DataFrame(columns=["Symbol", "Quantity", "Buy_Price"])
+
+# Function to add a new stock
+def add_stock():
+    symbol = input("Enter stock symbol (e.g., AAPL, TCS.NS): ").upper()
+    quantity = int(input("Enter quantity: "))
+    buy_price = float(input("Enter buy price: "))
+    new_stock = pd.DataFrame([[symbol, quantity, buy_price]], columns=portfolio.columns)
+    portfolio.loc[len(portfolio)] = new_stock.loc[0]
+    portfolio.to_csv(PORTFOLIO_FILE, index=False)
+    print(f"{symbol} added successfully!\n")
+
+# Function to view portfolio with live prices
+def view_portfolio():
+    if portfolio.empty:
+        print("No stocks in portfolio yet.\n")
+        return
+    
+    print("\nFetching latest stock data...\n")
+    data = []
+    for index, row in portfolio.iterrows():
+        stock = yf.Ticker(row["Symbol"])
+        live_price = stock.history(period="1d")["Close"].iloc[-1]
+        current_value = live_price * row["Quantity"]
+        invested_value = row["Buy_Price"] * row["Quantity"]
+        profit_loss = current_value - invested_value
+        data.append([row["Symbol"], row["Quantity"], row["Buy_Price"], 
+                     round(live_price, 2), round(current_value, 2), 
+                     round(invested_value, 2), round(profit_loss, 2)])
+    
+    df = pd.DataFrame(data, columns=["Symbol", "Qty", "Buy Price", "Current Price", 
+                                     "Current Value", "Invested Value", "Profit/Loss"])
+    print(df)
+    print("\nTotal Portfolio Value: ₹", round(df["Current Value"].sum(), 2))
+    print("Total Profit/Loss: ₹", round(df["Profit/Loss"].sum(), 2), "\n")
+
+# Function to delete a stock
+def delete_stock():
+    symbol = input("Enter stock symbol to delete: ").upper()
+    global portfolio
+    portfolio = portfolio[portfolio["Symbol"] != symbol]
+    portfolio.to_csv(PORTFOLIO_FILE, index=False)
+    print(f"{symbol} removed from portfolio.\n")
+
+# Menu
+while True:
+    print("=== STOCK PORTFOLIO TRACKER ===")
+    print("1. Add Stock")
+    print("2. View Portfolio")
+    print("3. Delete Stock")
+    print("4. Exit")
+    choice = input("Enter choice: ")
+    
+    if choice == "1":
+        add_stock()
+    elif choice == "2":
+        view_portfolio()
+    elif choice == "3":
+        delete_stock()
+    elif choice == "4":
+        print("Exiting... Goodbye!")
+        break
+    else:
+        print("Invalid choice, try again.\n")
